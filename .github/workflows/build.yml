@@ -7,14 +7,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Create complete Android app
+      - name: Create Android App
         run: |
-          # Create folder structure
+          # Folder structure
           mkdir -p app/src/main/java/com/test/app
           mkdir -p app/src/main/res/layout
-          mkdir -p gradle/wrapper
           
-          # Create MainActivity.java
+          # MainActivity.java
           cat > app/src/main/java/com/test/app/MainActivity.java << 'EOF'
           package com.test.app;
           import android.app.*;
@@ -26,54 +25,43 @@ jobs:
               protected void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
                   setContentView(R.layout.activity_main);
-                  Button btn = findViewById(R.id.btn);
-                  btn.setOnClickListener(v -> {
+                  findViewById(R.id.btn).setOnClickListener(v -> {
                       NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
                       if (android.os.Build.VERSION.SDK_INT >= 26) {
                           nm.createNotificationChannel(new NotificationChannel("ch", "Test", NotificationManager.IMPORTANCE_HIGH));
                       }
                       NotificationCompat.Builder b = new NotificationCompat.Builder(this, "ch");
                       b.setSmallIcon(android.R.drawable.ic_dialog_info);
-                      b.setContentTitle("Test Notification");
-                      b.setContentText("Button Pressed Successfully!");
-                      b.setPriority(NotificationCompat.PRIORITY_HIGH);
+                      b.setContentTitle("Test");
+                      b.setContentText("Working!");
                       nm.notify(1, b.build());
                   });
               }
           }
           EOF
           
-          # Create layout XML
+          # activity_main.xml
           cat > app/src/main/res/layout/activity_main.xml << 'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
               android:layout_width="match_parent"
               android:layout_height="match_parent"
-              android:gravity="center"
-              android:orientation="vertical">
-              <Button
-                  android:id="@+id/btn"
+              android:gravity="center">
+              <Button android:id="@+id/btn"
                   android:text="Show Notification"
                   android:layout_width="wrap_content"
-                  android:layout_height="wrap_content"
-                  android:padding="16dp"
-                  android:textSize="18sp"/>
+                  android:layout_height="wrap_content"/>
           </LinearLayout>
           EOF
           
-          # Create AndroidManifest.xml
+          # AndroidManifest.xml
           cat > app/src/main/AndroidManifest.xml << 'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android"
               package="com.test.app">
               <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
-              <application
-                  android:allowBackup="true"
-                  android:label="Test App"
-                  android:theme="@style/Theme.AppCompat.Light">
-                  <activity
-                      android:name=".MainActivity"
-                      android:exported="true">
+              <application android:label="Test App">
+                  <activity android:name=".MainActivity" android:exported="true">
                       <intent-filter>
                           <action android:name="android.intent.action.MAIN"/>
                           <category android:name="android.intent.category.LAUNCHER"/>
@@ -83,78 +71,43 @@ jobs:
           </manifest>
           EOF
           
-          # Create app build.gradle
+          # app/build.gradle (compileSdk 33 - jo kaam karta hai)
           cat > app/build.gradle << 'EOF'
-          plugins {
-              id 'com.android.application'
-          }
+          plugins { id 'com.android.application' }
           android {
               namespace 'com.test.app'
-              compileSdk 34
+              compileSdk 33
               defaultConfig {
                   applicationId 'com.test.app'
                   minSdk 21
-                  targetSdk 34
+                  targetSdk 33
                   versionCode 1
                   versionName '1.0'
-              }
-              compileOptions {
-                  sourceCompatibility JavaVersion.VERSION_1_8
-                  targetCompatibility JavaVersion.VERSION_1_8
               }
           }
           dependencies {
               implementation 'androidx.appcompat:appcompat:1.6.1'
-              implementation 'androidx.core:core:1.12.0'
+              implementation 'androidx.core:core:1.9.0'
           }
           EOF
           
-          # Create project build.gradle
+          # Project build.gradle
           cat > build.gradle << 'EOF'
           buildscript {
-              repositories {
-                  google()
-                  mavenCentral()
-              }
-              dependencies {
-                  classpath 'com.android.tools.build:gradle:8.1.0'
-              }
-          }
-          allprojects {
-              repositories {
-                  google()
-                  mavenCentral()
-              }
-          }
-          task clean(type: Delete) {
-              delete rootProject.buildDir
+              repositories { google(); mavenCentral() }
+              dependencies { classpath 'com.android.tools.build:gradle:7.4.2' }
           }
           EOF
           
-          # Create settings.gradle
-          cat > settings.gradle << 'EOF'
-          pluginManagement {
-              repositories {
-                  google()
-                  mavenCentral()
-                  gradlePluginPortal()
-              }
-          }
-          dependencyResolutionManagement {
-              repositories {
-                  google()
-                  mavenCentral()
-              }
-          }
-          rootProject.name = "TestApp"
-          include ':app'
-          EOF
+          # settings.gradle
+          echo "include ':app'" > settings.gradle
           
-          # Create gradle wrapper properties
+          # gradle-wrapper.properties
+          mkdir -p gradle/wrapper
           cat > gradle/wrapper/gradle-wrapper.properties << 'EOF'
           distributionBase=GRADLE_USER_HOME
           distributionPath=wrapper/dists
-          distributionUrl=https\://services.gradle.org/distributions/gradle-8.0-bin.zip
+          distributionUrl=https\://services.gradle.org/distributions/gradle-7.5-bin.zip
           zipStoreBase=GRADLE_USER_HOME
           zipStorePath=wrapper/dists
           EOF
@@ -162,40 +115,22 @@ jobs:
       - name: Setup JDK
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: '11'
           distribution: 'temurin'
           
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
-      
-      - name: Setup Gradle
+        
+      - name: Make gradlew
         run: |
-          # Create gradlew script
-          cat > gradlew << 'EOF'
-          #!/bin/sh
-          GRADLE_VERSION=8.0
-          GRADLE_URL="https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip"
-          GRADLE_ZIP="gradle-${GRADLE_VERSION}-bin.zip"
-          GRADLE_DIR="gradle-${GRADLE_VERSION}"
-          
-          if [ ! -d "$GRADLE_DIR" ]; then
-              echo "Downloading Gradle..."
-              curl -s -L -o "$GRADLE_ZIP" "$GRADLE_URL"
-              unzip -q "$GRADLE_ZIP"
-              rm "$GRADLE_ZIP"
-          fi
-          
-          "$GRADLE_DIR/bin/gradle" "$@"
-          EOF
-          
+          curl -L -o gradlew https://raw.githubusercontent.com/gradle/gradle/v7.5.0/gradlew
           chmod +x gradlew
           
       - name: Build APK
-        run: |
-          ./gradlew clean assembleDebug --no-daemon --stacktrace
-          
+        run: ./gradlew assembleDebug --no-daemon
+        
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Notification-App
+          name: MyApp
           path: app/build/outputs/apk/debug/*.apk
