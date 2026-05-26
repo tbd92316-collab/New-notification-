@@ -34,8 +34,9 @@ jobs:
                       }
                       NotificationCompat.Builder b = new NotificationCompat.Builder(this, "ch");
                       b.setSmallIcon(android.R.drawable.ic_dialog_info);
-                      b.setContentTitle("Test");
-                      b.setContentText("Button Pressed!");
+                      b.setContentTitle("Test Notification");
+                      b.setContentText("Button Pressed Successfully!");
+                      b.setPriority(NotificationCompat.PRIORITY_HIGH);
                       nm.notify(1, b.build());
                   });
               }
@@ -45,48 +46,111 @@ jobs:
           # Create layout XML
           cat > app/src/main/res/layout/activity_main.xml << 'EOF'
           <?xml version="1.0" encoding="utf-8"?>
-          <LinearLayout android:layout_width="match_parent"
-              android:layout_height="match_parent" android:gravity="center">
-              <Button android:id="@+id/btn" android:text="Show Notification"
-                  android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+          <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent"
+              android:gravity="center"
+              android:orientation="vertical">
+              <Button
+                  android:id="@+id/btn"
+                  android:text="Show Notification"
+                  android:layout_width="wrap_content"
+                  android:layout_height="wrap_content"
+                  android:padding="16dp"
+                  android:textSize="18sp"/>
           </LinearLayout>
           EOF
           
           # Create AndroidManifest.xml
           cat > app/src/main/AndroidManifest.xml << 'EOF'
           <?xml version="1.0" encoding="utf-8"?>
-          <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.test.app">
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+              package="com.test.app">
               <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
-              <application android:label="Test App">
-                  <activity android:name=".MainActivity" android:exported="true">
-                      <intent-filter><action android:name="android.intent.action.MAIN"/>
-                      <category android:name="android.intent.category.LAUNCHER"/></intent-filter>
+              <application
+                  android:allowBackup="true"
+                  android:label="Test App"
+                  android:theme="@style/Theme.AppCompat.Light">
+                  <activity
+                      android:name=".MainActivity"
+                      android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN"/>
+                          <category android:name="android.intent.category.LAUNCHER"/>
+                      </intent-filter>
                   </activity>
               </application>
           </manifest>
           EOF
           
-          # Create build.gradle
+          # Create app build.gradle
           cat > app/build.gradle << 'EOF'
-          plugins { id 'com.android.application' }
-          android { namespace 'com.test.app'; compileSdk 34
-              defaultConfig { applicationId 'com.test.app'; minSdk 21; targetSdk 34 }
-              compileOptions { sourceCompatibility JavaVersion.VERSION_1_8; targetCompatibility JavaVersion.VERSION_1_8 }
+          plugins {
+              id 'com.android.application'
           }
-          dependencies { implementation 'androidx.appcompat:appcompat:1.6.1'; implementation 'androidx.core:core:1.12.0' }
+          android {
+              namespace 'com.test.app'
+              compileSdk 34
+              defaultConfig {
+                  applicationId 'com.test.app'
+                  minSdk 21
+                  targetSdk 34
+                  versionCode 1
+                  versionName '1.0'
+              }
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_1_8
+                  targetCompatibility JavaVersion.VERSION_1_8
+              }
+          }
+          dependencies {
+              implementation 'androidx.appcompat:appcompat:1.6.1'
+              implementation 'androidx.core:core:1.12.0'
+          }
           EOF
           
           # Create project build.gradle
           cat > build.gradle << 'EOF'
-          buildscript { repositories { google(); mavenCentral() }
-              dependencies { classpath 'com.android.tools.build:gradle:8.1.0' } }
-          allprojects { repositories { google(); mavenCentral() } }
+          buildscript {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+              dependencies {
+                  classpath 'com.android.tools.build:gradle:8.1.0'
+              }
+          }
+          allprojects {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          task clean(type: Delete) {
+              delete rootProject.buildDir
+          }
           EOF
           
           # Create settings.gradle
-          echo "include ':app'" > settings.gradle
+          cat > settings.gradle << 'EOF'
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+          dependencyResolutionManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          rootProject.name = "TestApp"
+          include ':app'
+          EOF
           
-          # Create gradle wrapper
+          # Create gradle wrapper properties
           cat > gradle/wrapper/gradle-wrapper.properties << 'EOF'
           distributionBase=GRADLE_USER_HOME
           distributionPath=wrapper/dists
@@ -94,10 +158,6 @@ jobs:
           zipStoreBase=GRADLE_USER_HOME
           zipStorePath=wrapper/dists
           EOF
-          
-          # Download gradlew
-          curl -s -o gradlew https://raw.githubusercontent.com/gradle/gradle/master/gradlew
-          chmod +x gradlew
           
       - name: Setup JDK
         uses: actions/setup-java@v4
@@ -107,11 +167,32 @@ jobs:
           
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
-        
+      
+      - name: Setup Gradle
+        run: |
+          # Create gradlew script
+          cat > gradlew << 'EOF'
+          #!/bin/sh
+          GRADLE_VERSION=8.0
+          GRADLE_URL="https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip"
+          GRADLE_ZIP="gradle-${GRADLE_VERSION}-bin.zip"
+          GRADLE_DIR="gradle-${GRADLE_VERSION}"
+          
+          if [ ! -d "$GRADLE_DIR" ]; then
+              echo "Downloading Gradle..."
+              curl -s -L -o "$GRADLE_ZIP" "$GRADLE_URL"
+              unzip -q "$GRADLE_ZIP"
+              rm "$GRADLE_ZIP"
+          fi
+          
+          "$GRADLE_DIR/bin/gradle" "$@"
+          EOF
+          
+          chmod +x gradlew
+          
       - name: Build APK
         run: |
-          chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew clean assembleDebug --no-daemon --stacktrace
           
       - name: Upload APK
         uses: actions/upload-artifact@v4
